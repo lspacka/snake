@@ -1,9 +1,6 @@
 //  -lraylib -lgdi32 -lwinmm -Wall -std=c99 -I c:/raylib/raylib/src
 
-//  - change speed to vector
-
 #include <stdio.h>
-#include <string.h>
 #include <time.h>
 #include <stdlib.h>
 #include "raylib.h"
@@ -11,10 +8,9 @@
 
 typedef  struct Snake {
     Vector2 pos;
-    float xspeed;
-    float yspeed;
+    Vector2 speed;
+    Vector2* tail;
     int capacity;
-    Vector2* tail ;
 } Snake;
 
 void SnakeDir(Snake* snake, float speed);
@@ -28,47 +24,31 @@ int main()
 
     SetTraceLogLevel(LOG_WARNING);
     InitWindow(width, height, "Snake");
-    SetTargetFPS(13);
+    SetTargetFPS(12);
 
     int i;
     int scale = 20;
     int total = 0;
-    // int capacity = 100;
     int speed = 1;
     Snake snake = {0};
     snake.capacity = (width/scale) * (height/scale);
     snake.tail = malloc(snake.capacity * sizeof(Vector2));
     Vector2 food = {0};
-    // Color pinky = {233, 30, 99};
-
-    snake.xspeed = speed;
-    snake.yspeed = 0;
+    Vector2 tail_piece;
+    snake.speed = (Vector2){speed, 0};
 
     PickLocation(&food, width, height, scale);
 
     while (!WindowShouldClose()) {
         if (Vector2Distance(snake.pos, food) < 1) {
-            PickLocation(&food, width, height, scale);
             total++;
-            // size_t new_size = total * sizeof(Vector2);
-            // snake.tail = realloc(snake.tail, new_size);
-            // if (total > snake.capacity) {
-            //     snake.capacity *= 2;
-            //     size_t new_size = snake.capacity * sizeof(Vector2);
-            //     snake.tail = realloc(snake.tail, new_size);
-            // }
-
-            //  check tail array resizing
-            // if (snake.tail == NULL) 
-            //     printf("tail>0 NULL\n\n");
-            // else
-            //     printf("%zu\n", new_size);
 
             // init new tail segment to current head position
             if (total > 0) 
                 snake.tail[total-1] = snake.pos;
 
-            // PickLocation(&food, width, height, scale);
+            PickLocation(&food, width, height, scale);
+            // printf("total: %d\n", total);
         }
 
         // growing logic
@@ -79,22 +59,27 @@ int main()
 
         // update last tail segment with current head position
         if (total >= 1) {
-            Vector2 tail_piece = {snake.pos.x, snake.pos.y};
+            tail_piece = (Vector2){snake.pos.x, snake.pos.y};
             snake.tail[total-1] = tail_piece;
         }
 
-        // for (i = 0; i < total; i ++) {
-        //     DrawRectangle(snake.tail[i].x+1, snake.tail[i].y, scale, scale, RAYWHITE);
-        // }
-
-        // if snake dies, free(snake.tail)
-
         // update position
-        snake.pos.x += snake.xspeed * scale;
-        snake.pos.y += snake.yspeed * scale;
+        snake.pos.x += snake.speed.x * scale;
+        snake.pos.y += snake.speed.y * scale;
 
         snake.pos.x = Clamp(snake.pos.x, 0, width-scale);
-        snake.pos.y = Clamp(snake.pos.y, 0, height-scale);        
+        snake.pos.y = Clamp(snake.pos.y, 0, height-scale);  
+
+        // game reset
+        for (i = 0; i < total; i++) {
+            Vector2 tail_pos = snake.tail[i];
+            // if (Vector2Distance(snake.pos, tail_pos) < 1) {
+            if (snake.pos.x == tail_pos.x && snake.pos.y == tail_pos.y) {
+                total = 0;
+                PickLocation(&food, width, height, scale);
+                break;
+            }
+        }
 
         SnakeDir(&snake, speed);
 
@@ -118,19 +103,14 @@ int main()
 
 void SnakeDir(Snake* snake, float speed)
 {
-    if (IsKeyPressed(KEY_DOWN)) {
-        snake->xspeed = 0;
-        snake->yspeed = speed;
-    } else if (IsKeyPressed(KEY_UP)) {
-        snake->xspeed = 0;
-        snake->yspeed = -speed;
-    } else if (IsKeyPressed(KEY_LEFT)) {
-        snake->xspeed = -speed;
-        snake->yspeed = 0;
-    } else if (IsKeyPressed(KEY_RIGHT)) {
-        snake->xspeed = speed;
-        snake->yspeed = 0;
-    }
+    if (IsKeyPressed(KEY_DOWN)) 
+        snake->speed = (Vector2){0, speed};
+    else if (IsKeyPressed(KEY_UP)) 
+        snake->speed = (Vector2){0, -speed};
+    else if (IsKeyPressed(KEY_LEFT)) 
+        snake->speed = (Vector2){-speed, 0};
+    else if (IsKeyPressed(KEY_RIGHT)) 
+        snake->speed = (Vector2){speed, 0};
 }
 
 void PickLocation(Vector2* food, int width, int height, int scale)
